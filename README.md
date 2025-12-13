@@ -16,19 +16,31 @@ The Lambda function pulls configuration from environment variables and falls bac
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
-| `PWS_API_URL` | Base URL for the weather endpoint (should return JSON). | `https://api.example.com/weather` |
+| `PWS_API_URL` | Base URL for the weather endpoint (should return JSON). | `https://api.weather.com/v2/pws/observations/current` |
 | `PWS_API_KEY` | API key for the weather service. | `f1994ef8630f4028994ef8630fd02897` |
-| `PWS_DEVICE_ID` | Weather station identifier. | `IVILNI74` |
-| `PWS_DEVICE_KEY` | Device-level secret, if required by the API. | `lBadpl8H` |
+| `PWS_STATION_ID` | Weather station identifier. | `IVILNI74` |
+| `PWS_UNITS` | Unit system to request from the API (`m` for metric, `e` for imperial). | `m` |
 
-The code builds the request as `<PWS_API_URL>?apiKey=...&deviceId=...&deviceKey=...`. Update `PWS_API_URL` (and the defaults, if you prefer) to match the endpoint described in your API documentation.
+Requests are built as `PWS_API_URL?stationId=<PWS_STATION_ID>&format=json&units=<PWS_UNITS>&apiKey=<PWS_API_KEY>`, matching the [Weather.com PWS API](https://api.weather.com/v2/pws/observations/current?stationId=KMAHANOV10&format=json&units=e&apiKey=yourApiKey).
 
-## Deployment
+## Deployment overview
 
-1. Create a new **Smart Home** skill in the Alexa Developer Console and choose **AWS Lambda** as the endpoint.
-2. Deploy `src/index.js` to a Lambda function (Node.js 18 runtime or later). Set the environment variables from the table above so the function can reach your weather API.
-3. In the Alexa skill configuration, use the Lambda ARN as the default endpoint.
-4. From the Alexa app, disable and re-enable the skill to trigger device discovery. The five devices listed above should appear and be available to routines.
+1. Create and configure an AWS Lambda function that runs the Smart Home handler and can access your weather API.
+2. Create a **Smart Home** skill in the Alexa Developer Console and point it at the Lambda ARN.
+3. Enable the skill and run device discovery to surface the five virtual weather devices in Alexa.
+
+## Set up AWS Lambda
+
+1. In the AWS console, go to **IAM → Roles → Create role**. Choose **AWS service → Lambda**, then attach the **AWSLambdaBasicExecutionRole** policy for CloudWatch logging. Name the role (e.g., `pws-smart-home-role`) and create it.
+2. Go to **Lambda → Create function**. Choose **Author from scratch**, select **Node.js 18.x** (or newer) as the runtime, and pick the IAM role you created above. Name the function (e.g., `pws-smart-home`).
+3. Upload the code:
+   - Option A: Zip this repository (or just `src/` plus `package.json`) and upload via **Code → Upload from → .zip file**.
+   - Option B: Use the **Upload from → Amazon S3** option if you prefer to store the bundle in S3.
+4. In **Configuration → Environment variables**, add the keys from the table above if you need to override defaults (especially `PWS_API_KEY`, `PWS_STATION_ID`, or `PWS_UNITS`).
+5. In **Configuration → General configuration**, set the handler to `src/index.handler` if it is not already.
+6. Save the function. Copy the **Function ARN**; you will use it in the Alexa Developer Console.
+
+> Tip: You can test the Lambda in the console with a simple event that calls `Alexa.Discovery`, or using the `node` snippet in [Testing locally](#testing-locally).
 
 ## Add the skill in the Alexa Developer Console
 
