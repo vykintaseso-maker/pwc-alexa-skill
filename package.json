@@ -1,0 +1,17 @@
+{
+  "name": "pwc-alexa-skill",
+  "version": "1.0.0",
+  "description": "Alexa Smart Home skill for exposing personal weather station readings as virtual devices.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"No automated tests yet\" && exit 0"
+  },
+  "keywords": [
+    "alexa",
+    "smart-home",
+    "weather"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
