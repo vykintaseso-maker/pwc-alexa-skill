@@ -52,7 +52,7 @@ These steps assume you already have an AWS account and have deployed the Lambda 
 4. In the **Smart Home service endpoint** section, select **AWS Lambda ARN** and paste the Lambda ARN you deployed earlier.
 5. Click **Save**. Copy the **Skill ID** from the top of the page.
 6. In the AWS Lambda console, add an **Alexa Smart Home** trigger to your function and paste the Skill ID when prompted, then save.
-7. Back in the Alexa Developer Console, build the model (if prompted) and click **Save** once more. The **Account linking** tab is not needed for this Smart Home skill.
+7. Back in the Alexa Developer Console, build the model (if prompted) and click **Save** once more.
 8. Enable the skill in your Alexa mobile app (or via the console's **Test** tab with `Development` enabled), then run device discovery. The five virtual devices—temperature, wind speed, pressure, precipitation, and solar radiation—should appear and become available for routines.
 
 ## How it works
