@@ -87,12 +87,6 @@ exports.handler = async (event, context) => {
   const directive = event.directive;
   const namespace = directive?.header?.namespace;
 
-  if (!directive || !directive.header) {
-    throw new Error(
-      'Missing Alexa Smart Home directive. Confirm you are invoking the Lambda with an Alexa directive payload (e.g., Discover or ReportState).'
-    );
-  }
-
   if (namespace === 'Alexa.Discovery' && directive.header.name === 'Discover') {
     return buildDiscoveryResponse();
   }

@@ -34,26 +34,13 @@ Requests are built as `PWS_API_URL?stationId=<PWS_STATION_ID>&format=json&units=
 1. In the AWS console, go to **IAM → Roles → Create role**. Choose **AWS service → Lambda**, then attach the **AWSLambdaBasicExecutionRole** policy for CloudWatch logging. Name the role (e.g., `pws-smart-home-role`) and create it.
 2. Go to **Lambda → Create function**. Choose **Author from scratch**, select **Node.js 18.x** (or newer) as the runtime, and pick the IAM role you created above. Name the function (e.g., `pws-smart-home`).
 3. Upload the code:
-   - Option A: Zip this repository (or just `src/`, `index.js`, and `package.json`) and upload via **Code → Upload from → .zip file**.
+   - Option A: Zip this repository (or just `src/` plus `package.json`) and upload via **Code → Upload from → .zip file**.
    - Option B: Use the **Upload from → Amazon S3** option if you prefer to store the bundle in S3.
 4. In **Configuration → Environment variables**, add the keys from the table above if you need to override defaults (especially `PWS_API_KEY`, `PWS_STATION_ID`, or `PWS_UNITS`).
-5. In **Configuration → General configuration**, set the handler to `index.handler`. A root `index.js` file proxies to the Smart Home handler in `src/index.js` so you do not need to change the folder structure.
+5. In **Configuration → General configuration**, set the handler to `src/index.handler` if it is not already.
 6. Save the function. Copy the **Function ARN**; you will use it in the Alexa Developer Console.
 
 > Tip: You can test the Lambda in the console with a simple event that calls `Alexa.Discovery`, or using the `node` snippet in [Testing locally](#testing-locally).
-
-Example Lambda test event for discovery:
-
-```json
-{
-  "directive": {
-    "header": { "namespace": "Alexa.Discovery", "name": "Discover", "messageId": "pws-test" },
-    "payload": {}
-  }
-}
-```
-
-If you see `Missing Alexa Smart Home directive`, double-check that your test event follows the structure above and that your Lambda trigger is **Alexa Smart Home**.
 
 ## Add the skill in the Alexa Developer Console
 
@@ -65,7 +52,7 @@ These steps assume you already have an AWS account and have deployed the Lambda 
 4. In the **Smart Home service endpoint** section, select **AWS Lambda ARN** and paste the Lambda ARN you deployed earlier.
 5. Click **Save**. Copy the **Skill ID** from the top of the page.
 6. In the AWS Lambda console, add an **Alexa Smart Home** trigger to your function and paste the Skill ID when prompted, then save.
-7. Back in the Alexa Developer Console, build the model (if prompted) and click **Save** once more. The **Account linking** tab is not needed for this Smart Home skill.
+7. Back in the Alexa Developer Console, build the model (if prompted) and click **Save** once more.
 8. Enable the skill in your Alexa mobile app (or via the console's **Test** tab with `Development` enabled), then run device discovery. The five virtual devices—temperature, wind speed, pressure, precipitation, and solar radiation—should appear and become available for routines.
 
 ## How it works
@@ -79,7 +66,7 @@ These steps assume you already have an AWS account and have deployed the Lambda 
 There are no automated tests yet. To quickly exercise the handler, you can simulate a directive payload with `node`:
 
 ```bash
-node -e "const h=require('./index'); h.handler({directive:{header:{namespace:'Alexa.Discovery',name:'Discover'},payload:{} } }).then(console.log)"
+node -e "const h=require('./src'); h.handler({directive:{header:{namespace:'Alexa.Discovery',name:'Discover'},payload:{} } }).then(console.log)"
 ```
 
 Replace the input event to mimic `Alexa.ReportState` for an endpoint (e.g., `pws-wind-speed`) as needed.
