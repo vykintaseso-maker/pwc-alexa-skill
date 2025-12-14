@@ -2,10 +2,10 @@ const https = require('https');
 const { URL } = require('url');
 
 const DEFAULTS = {
-  apiUrl: process.env.PWS_API_URL || 'https://api.example.com/weather',
+  apiUrl: process.env.PWS_API_URL || 'https://api.weather.com/v2/pws/observations/current',
   apiKey: process.env.PWS_API_KEY || 'f1994ef8630f4028994ef8630fd02897',
-  deviceId: process.env.PWS_DEVICE_ID || 'IVILNI74',
-  deviceKey: process.env.PWS_DEVICE_KEY || 'lBadpl8H',
+  stationId: process.env.PWS_STATION_ID || 'IVILNI74',
+  units: process.env.PWS_UNITS || 'm',
 };
 
 function httpGet(url) {
@@ -35,11 +35,12 @@ function httpGet(url) {
 }
 
 function buildUrl(config = {}) {
-  const { apiUrl = DEFAULTS.apiUrl, apiKey = DEFAULTS.apiKey, deviceId = DEFAULTS.deviceId, deviceKey = DEFAULTS.deviceKey } = config;
+  const { apiUrl = DEFAULTS.apiUrl, apiKey = DEFAULTS.apiKey, stationId = DEFAULTS.stationId, units = DEFAULTS.units } = config;
   const url = new URL(apiUrl);
+  url.searchParams.set('stationId', stationId);
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('units', units);
   url.searchParams.set('apiKey', apiKey);
-  url.searchParams.set('deviceId', deviceId);
-  url.searchParams.set('deviceKey', deviceKey);
   return url.toString();
 }
 
@@ -50,13 +51,14 @@ async function fetchWeatherSnapshot(config = {}) {
     throw new Error('Weather payload was not an object');
   }
 
-  const readings = payload.data || payload.readings || payload;
+  const observation = payload.observations?.[0] || payload.data?.[0] || payload.readings?.[0] || payload;
+  const metrics = observation.metric || observation;
   return {
-    outsideTemperature: readings.outsideTemperature ?? readings.temperature ?? readings.temp,
-    windSpeed: readings.windSpeed ?? readings.wind_speed ?? readings.wind,
-    pressure: readings.pressure ?? readings.pressure_hpa ?? readings.hpa,
-    precipitation: readings.precipitation ?? readings.rainRate ?? readings.rain,
-    solarRadiation: readings.solarRadiation ?? readings.solar_radiation ?? readings.solar,
+    outsideTemperature: metrics.temp ?? metrics.temperature ?? metrics.outsideTemperature,
+    windSpeed: metrics.windSpeed ?? metrics.wind_speed ?? metrics.wind,
+    pressure: metrics.pressure ?? metrics.pressure_hpa ?? metrics.hpa,
+    precipitation: metrics.precipRate ?? metrics.precipitation ?? metrics.rainRate ?? metrics.rain,
+    solarRadiation: metrics.solarRadiation ?? metrics.solar_radiation ?? metrics.solar,
   };
 }
 
