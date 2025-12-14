@@ -13,7 +13,7 @@ const ENDPOINTS = [
       properties: {
         supported: [{ name: 'temperature' }],
         retrievable: true,
-        proactivelyReported: false,
+        proactivelyReported: true,
       },
     },
   },
@@ -87,6 +87,10 @@ exports.handler = async (event, context) => {
   const directive = event.directive;
   const namespace = directive?.header?.namespace;
 
+  if (event.source === 'aws.events') {
+    return publishChangeReports();
+  }
+
   if (namespace === 'Alexa.Discovery' && directive.header.name === 'Discover') {
     return buildDiscoveryResponse();
   }
@@ -108,7 +112,7 @@ function buildRangeCapability({ instance, friendlyName, unitOfMeasure, min, max,
     properties: {
       supported: [{ name: 'rangeValue' }],
       retrievable: true,
-      proactivelyReported: false,
+      proactivelyReported: true,
     },
     capabilityResources: {
       friendlyNames: [
@@ -167,6 +171,10 @@ async function handleStateReport(endpointId, correlationToken, scope) {
   const snapshot = await fetchWeatherSnapshot();
   const properties = buildProperties(snapshot, endpointId);
 
+  if (process.env.ALEXA_PROACTIVE_TOKEN) {
+    await sendChangeReport(endpointId, properties);
+  }
+
   return {
     context: { properties },
     event: {
@@ -184,6 +192,17 @@ async function handleStateReport(endpointId, correlationToken, scope) {
       payload: {},
     },
   };
+}
+
+async function publishChangeReports() {
+  const snapshot = await fetchWeatherSnapshot();
+  await Promise.all(
+    ENDPOINTS.map(({ endpointId }) => {
+      const properties = buildProperties(snapshot, endpointId);
+      return sendChangeReport(endpointId, properties);
+    })
+  );
+  return { status: 'published' };
 }
 
 function buildProperties(snapshot, endpointId) {
@@ -246,6 +265,73 @@ function buildProperties(snapshot, endpointId) {
 
 function randomMessageId() {
   return `pws-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+}
+
+function postEvent(payload, token) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(payload);
+    const req = require('https').request(
+      'https://api.amazonalexa.com/v3/events',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+          'Content-Length': Buffer.byteLength(data),
+        },
+      },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk) => {
+          body += chunk;
+        });
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Event post failed with status ${res.statusCode}: ${body}`));
+          }
+        });
+      }
+    );
+
+    req.on('error', reject);
+    req.write(data);
+    req.end();
+  });
+}
+
+async function sendChangeReport(endpointId, properties) {
+  const token = process.env.ALEXA_PROACTIVE_TOKEN;
+  if (!token) {
+    return;
+  }
+
+  const payload = {
+    event: {
+      header: {
+        namespace: 'Alexa',
+        name: 'ChangeReport',
+        payloadVersion: '3',
+        messageId: randomMessageId(),
+      },
+      endpoint: {
+        scope: {
+          type: 'BearerToken',
+          token,
+        },
+        endpointId,
+      },
+      payload: {
+        change: {
+          cause: { type: 'PERIODIC_POLL' },
+          properties,
+        },
+      },
+    },
+  };
+
+  await postEvent(payload, token);
 }
 
 function toNumber(value) {
